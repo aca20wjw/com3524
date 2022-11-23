@@ -65,7 +65,7 @@ def transition_function(grid, neighbourstates, neighbourcounts, type_grid, veg_l
     veg_lvl_grid[burning_cells & (type_grid == 2)] -= 1
     veg_lvl_grid[burning_cells & (type_grid == 3)] -= 3
 
-    veg_lvl_grid[burnt_cells] += 0.1
+    veg_lvl_grid[burnt_cells] += 0.5
     
     # alternative implementation below -- each cell type grows at different rate 
 
@@ -85,7 +85,7 @@ def transition_function(grid, neighbourstates, neighbourcounts, type_grid, veg_l
 
     # get all cells that are in risk of catching fire (all cells with at least one neighbour on fire, not a 
     # lake and is not already burning)
-    fire_risk_cells = (burning_n > 1) & (grid == 0) & (type_grid != 0)
+    fire_risk_cells = (burning_n > 1) & (grid_cpy == 0)
     
     type_1 = (type_grid == 1)
     type_2 = (type_grid == 2)
@@ -102,8 +102,10 @@ def transition_function(grid, neighbourstates, neighbourcounts, type_grid, veg_l
     t2_fire = rnd_array < p_t2
     t3_fire = rnd_array < p_t3
 
-    set_fire = (t1_fire & t1_fire_risk) & (t2_fire & t2_fire_risk) & (t3_fire & t3_fire_risk)
+    # set_fire = (t1_fire & t1_fire_risk) & (t2_fire & t2_fire_risk) & (t3_fire & t3_fire_risk)
+    set_fire = fire_risk_cells
     set_burnt = (veg_lvl_grid == 0) & (grid_cpy != 2)
+    set_new = (veg_lvl_grid == fuel_cap) & (grid_cpy == 2)
    
     
     # if cell already on fire and fuel level still above 0, keep cells on fire
@@ -115,11 +117,12 @@ def transition_function(grid, neighbourstates, neighbourcounts, type_grid, veg_l
     grid_cpy[:, :] = 0
     grid_cpy[set_fire | keep_fire] = 1
     grid_cpy[keep_burnt] = 2
+    grid_cpy[set_new] = 0
 
     # cells 
     grid_cpy[set_burnt] = 2
     # cells that have fuel value n (regrowth complete) turn into state 0 (not burning/flammable)
-    grid_cpy[veg_lvl_grid == fuel_cap] = 0
+    # grid_cpy[veg_lvl_grid == fuel_cap] = 0
 
     # grid_cpy[:,:] = 0
     # grid_cpy[type_1] = 2
