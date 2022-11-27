@@ -28,6 +28,7 @@ f4 = open("state_map.txt", 'w')
 f5 = open("t1_fire_risk.txt", 'w')
 edg = open("edge_case_map.txt", 'w')
 test = open("test_file.txt", 'w')
+typ_map = open("type_map.txt", 'w')
 f_log = open("log.txt", 'w')
 
 def setup(args):
@@ -37,12 +38,12 @@ def setup(args):
     # -- THE CA MUST BE RELOADED IN THE GUI IF ANY OF THE BELOW ARE CHANGED --
     config.title = "forest_fire"
     config.dimensions = 2
-    config.states = (0,1,2)
+    config.states = (0,1,2,3,4,5,6)
     # -------------------------------------------------------------------------
 
     # ---- Override the defaults below (these may be changed at anytime) ----
 
-    config.state_colors = [(0,0,0),(1,1,1),(0.5,0.5,0.5)]
+    config.state_colors = [(0,0,0),(1,0.4,0.2),(0.5,0.35,0.17),(0.55,0.85,0.85),(0.7,0.7,0.5),(0.5,0.6,0.6),(0.83,0.7,0.55)]
     config.grid_dims = dimensions
     # ----------------------------------------------------------------------
 
@@ -91,7 +92,7 @@ def transition_func(grid, neighbourstates, neighbourcounts, type_grid, veg_lvl_g
     return grid
 
 def transition_function(grid, neighbourstates, neighbourcounts, type_grid, veg_lvl_grid, edge_case_grid):
-    not_burning_n, burning_n, burnt_n = neighbourcounts
+    not_state_n, burning_n, burnt_n, lake_n, charpal_n, forest_n, canyon_n = neighbourcounts
     NW, N, NE, W, E, SW, S, SE = neighbourstates
 
     # calculate neighbours for all edge cases that should not be included in the final count
@@ -185,7 +186,7 @@ def transition_function(grid, neighbourstates, neighbourcounts, type_grid, veg_l
     test.write("\n\n\n\n")
 
     # if lake is in burning state, turn it back 
-    grid[type_grid == 0] = 0
+    grid[type_grid == 0] = 3
 
     # files for debugging
     for line in NW:
@@ -199,10 +200,11 @@ def transition_function(grid, neighbourstates, neighbourcounts, type_grid, veg_l
     
     for i in grid:
         for j in i:
-            if j == False:
-                f2.write(f"⬚ ")
-            else:
-                f2.write("■ ")
+            f2.write(f"{str(j)}")
+            # if j == False:
+            #     f2.write(f"⬚ ")
+            # else:
+            #     f2.write("■ ")
         f2.write("\n")
     f2.write("\n\n\n\n")
     
@@ -216,7 +218,7 @@ def transition_function(grid, neighbourstates, neighbourcounts, type_grid, veg_l
     f3.write("\n\n\n\n")
 
     # update vegetation level after burning, search for cells that are either burnt or burning and handle
-    # accordinglyw
+    # accordingly
     burning_cells = (grid == 1)
     burnt_cells = (grid == 2)
 
@@ -245,7 +247,7 @@ def transition_function(grid, neighbourstates, neighbourcounts, type_grid, veg_l
 
     # get all cells that are in risk of catching fire (all cells with at least one neighbour on fire, not a 
     # lake and is not already burning)
-    fire_risk_cells = ((adjusted_burning_n >= 1) & (grid == 0) & (type_grid != 0))
+    fire_risk_cells = ((adjusted_burning_n >= 1) & ((grid > 3) | (grid == 0)) & (type_grid != 0))
     # center_fire_risk_cells = (burning_n >= 1) & (grid == 0) & (type_grid != 0)
     
     type_1 = (type_grid == 1)
@@ -283,7 +285,11 @@ def transition_function(grid, neighbourstates, neighbourcounts, type_grid, veg_l
     set_fire = (t1_fire & t1_fire_risk) | (t2_fire & t2_fire_risk) | (t3_fire & t3_fire_risk)
     # set_fire = fire_risk_cells
     set_burnt = (veg_lvl_grid == 0) & (grid != 2)
-    set_new = (veg_lvl_grid == fuel_cap) & (grid == 2)
+    # set_new = (veg_lvl_grid == fuel_cap) & (grid == 2)
+
+    set_new_1 = (veg_lvl_grid == fuel_cap) & (grid == 2) & (type_grid == 1)
+    set_new_2 = (veg_lvl_grid == fuel_cap) & (grid == 2) & (type_grid == 2)
+    set_new_3 = (veg_lvl_grid == fuel_cap) & (grid == 2) & (type_grid == 3)
    
     
     # if cell already on fire and fuel level still above 0, keep cells on fire
@@ -293,9 +299,17 @@ def transition_function(grid, neighbourstates, neighbourcounts, type_grid, veg_l
 
     # set final values for grid
     grid[:, :] = 0
+    grid[type_grid == 0] = 3
+    grid[type_grid == 1] = 4
+    grid[type_grid == 2] = 5
+    grid[type_grid == 3] = 6
     grid[set_fire | keep_fire] = 1
     grid[keep_burnt] = 2
-    grid[set_new] = 0 
+    # grid[set_new] = 0 
+    grid[set_new_1] = 4
+    grid[set_new_2] = 5 
+    grid[set_new_3] = 6
+    
     grid[set_burnt] = 2
 
     # cells that have fuel value n (regrowth complete) turn into state 0 (not burning/flammable)
@@ -415,6 +429,12 @@ def main():
     type_grid[7, 3:10] = 0
     type_grid[3:16, 12] = 3
 
+    for line in type_grid:
+        for i in line:
+            typ_map.write(f"{str(i)[0]} ")
+        typ_map.write("\n")
+    typ_map.write("\n\n\n\n")
+
     # grid for edge cases 1 = top, 2 = left, 3 = right, 4 = down
     rows, cols = config.grid_dims
     edge_case_grid = np.zeros(config.grid_dims)
@@ -427,9 +447,6 @@ def main():
     edge_case_grid[0,cols-1] = 6
     edge_case_grid[rows-1,0] = 7
     edge_case_grid[rows-1,cols-1] = 8
-
-
-
 
     test.write(f"rows: {rows}  cols: {cols}\n")
     for line in edge_case_grid:
