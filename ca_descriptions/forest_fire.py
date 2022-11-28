@@ -25,8 +25,8 @@ dimensions = (40,40) # suggested that dimensions stays a multiple of 20 x 20 e.g
 fuel_cap = 100 # maximum amount of fuel afforded for each cell
 
 # probability cell will be set on fire
-p_forest = 0.05
-p_charpal = 0.1
+p_forest = 0.025
+p_charpal = 0.07
 p_canyon = 0.2
 
 # how much fuel each type of cell consumes per generation
@@ -35,12 +35,12 @@ forest_burn_rate = 1
 canyon_burn_rate = 3
 
 # how much fuel each type gains back every generation
-charpal_growth_rate = 1
-forest_growth_rate = 1
-canyon_growth_rate = 1
+charpal_growth_rate = 0.7
+forest_growth_rate = 0.5
+canyon_growth_rate = 1.5
 
 # wind direction -> n, w, e, s, ne, nw, se, sw | 0 = no wind
-wind_dir = '0'
+wind_dir = 'n'
 wind_effect_multiplier = 0.6 # the lower the number the greater the effect, as Probability(Cell catches fire) is multiplied by inverse of this 
 
 # ------------------ ---------- ------------------ #
@@ -78,13 +78,13 @@ def setup(args):
     # -- THE CA MUST BE RELOADED IN THE GUI IF ANY OF THE BELOW ARE CHANGED --
     config.title = "forest_fire"
     config.dimensions = 2
-    # 0: no state, 1: burning, 2: burnt, 3: lake, 4: charpal, 5: forest, 6: canyon 
-    config.states = (0,1,2,3,4,5,6)
+    # 0: no state, 1: burning, 2: burnt, 3: lake, 4: charpal, 5: forest, 6: canyon, 7: town
+    config.states = (0,1,2,3,4,5,6,7)
     # -------------------------------------------------------------------------
 
     # ---- Override the defaults below (these may be changed at anytime) ----
 
-    config.state_colors = [(0,0,0),(1,0.4,0.2),(0.5,0.35,0.17),(0.55,0.85,0.85),(0.2,0.6,0.4),(0,0.2,0),(0.83,0.7,0.55)]
+    config.state_colors = [(0,0,0),(1,0.4,0.2),(0.5,0.35,0.17),(0.55,0.85,0.85),(0.2,0.6,0.4),(0,0.2,0),(0.83,0.7,0.55),(0.2,0.2,0.2)]
     config.grid_dims = dimensions
     # ----------------------------------------------------------------------
 
@@ -97,11 +97,11 @@ def setup(args):
     return config
 
 def transition_function(grid, neighbourstates, neighbourcounts, type_grid, veg_lvl_grid, edge_case_grid, p_grid, wind_dir, rows, cols):
-    not_state_n, burning_n, burnt_n, lake_n, charpal_n, forest_n, canyon_n = neighbourcounts
+    not_state_n, burning_n, burnt_n, lake_n, charpal_n, forest_n, canyon_n, forest_n = neighbourcounts
     NW, N, NE, W, E, SW, S, SE = neighbourstates
 
 
-    wind_grid_dict = {'n':N,'s':S,'w':W,'e':E,'nw':NW,'ne':NE,'SW':SW,'SE':SE}
+    wind_grid_dict = {'n':N,'s':S,'w':W,'e':E,'nw':NW,'ne':NE,'sw':SW,'se':SE} #adjusted to use lowercase for all in variable
 
     # calculate neighbours for all edge cases that should not be included in the final count
 
@@ -367,6 +367,7 @@ def transition_function(grid, neighbourstates, neighbourcounts, type_grid, veg_l
     grid[type_grid == 1] = 4
     grid[type_grid == 2] = 5
     grid[type_grid == 3] = 6
+    grid[type_grid == 4] = 7 # added town cell
     grid[set_fire | keep_fire] = 1
     grid[keep_burnt] = 2
     # grid[set_new] = 0 
@@ -396,10 +397,11 @@ def main():
     # type_grid[7, 3:10] = 0
     # type_grid[3:16, 12] = 3
 
-    type_grid[round(rows*(2/5)):round(rows*(7/10)), 0:round(cols*0.5)] = 2
-    type_grid[round(rows*(3/20)):round(rows*(7/10)), round(cols*(3/10)):round(cols*0.5)] = 2
-    type_grid[round(rows*(14/40)):round(rows*(16/40)), round(cols*(3/20)):round(cols*0.5)] = 0
-    type_grid[round(rows*(3/20)):round(cols*(4/5)), round(cols*(24/40)):round(cols*(26/40))] = 3
+    type_grid[round(rows*(2/5)):round(rows*(7/10)), 0:round(cols*0.5)] = 2 # forest
+    type_grid[round(rows*(3/20)):round(rows*(7/10)), round(cols*(3/10)):round(cols*0.5)] = 2 # forest
+    type_grid[round(rows*(14/40)):round(rows*(16/40)), round(cols*(3/20)):round(cols*0.5)] = 0 # lake
+    type_grid[round(rows*(3/20)):round(cols*(4/5)), round(cols*(24/40)):round(cols*(26/40))] = 3 # canyon
+    type_grid[round(rows*(7/8)):round(rows*(37/40)), round(cols*(3/8)):round(cols*(17/40))] = 4 # town
 
     # for line in type_grid:
     #     for i in line:
@@ -438,6 +440,7 @@ def main():
     p_grid[type_grid == 1] = p_charpal
     p_grid[type_grid == 2] = p_forest
     p_grid[type_grid == 3] = p_canyon
+    p_grid[type_grid == 4] = p_forest  # assume town burns the same as the forest
 
     # Create grid object using parameters from config + transition function
 
